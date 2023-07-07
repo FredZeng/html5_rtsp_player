@@ -1,29 +1,35 @@
-import {EventEmitter, EventSourceWrapper} from '../../deps/bp_event.js';
-import {getTagged} from "../../deps/bp_logger.js";
-import {MP4} from '../iso-bmff/mp4-generator.js';
-import {AACRemuxer} from './aac.js';
-import {H264Remuxer} from './h264.js';
-import {MSE} from '../presentation/mse.js';
-import {PayloadType} from "../defs.js";
+import { EventEmitter, EventSourceWrapper } from '../../deps/bp_event.js';
+import { getTagged } from '../../deps/bp_logger.js';
+import { MP4 } from '../iso-bmff/mp4-generator.js';
+import { AACRemuxer } from './aac.js';
+import { H264Remuxer } from './h264.js';
+import { MSE } from '../presentation/mse.js';
+import { PayloadType } from '../defs.js';
 
-const LOG_TAG = "remuxer";
+const LOG_TAG = 'remuxer';
 const Log = getTagged(LOG_TAG);
 
 export class Remuxer {
-    static get TrackConverters() {return {
-        [PayloadType.H264]: H264Remuxer,
-        [PayloadType.AAC]:  AACRemuxer
-    }};
+    static get TrackConverters() {
+        return {
+            [PayloadType.H264]: H264Remuxer,
+            [PayloadType.AAC]: AACRemuxer,
+        };
+    }
 
-    static get TrackScaleFactor() {return {
-        [PayloadType.H264]: 1,//4,
-        [PayloadType.AAC]:  0
-    }};
+    static get TrackScaleFactor() {
+        return {
+            [PayloadType.H264]: 1, //4,
+            [PayloadType.AAC]: 0,
+        };
+    }
 
-    static get TrackTimescale() {return {
-        [PayloadType.H264]: 90000,//22500,
-        [PayloadType.AAC]:  0
-    }};
+    static get TrackTimescale() {
+        return {
+            [PayloadType.H264]: 90000, //22500,
+            [PayloadType.AAC]: 0,
+        };
+    }
 
     constructor(mediaElement) {
         this.mse = new MSE([mediaElement]);
@@ -71,12 +77,16 @@ export class Remuxer {
         Log.debug(`ontracks: `, tracks.detail);
         // store available track types
         for (let track of tracks.detail) {
-            this.tracks[track.type] = new Remuxer.TrackConverters[track.type](Remuxer.TrackTimescale[track.type], Remuxer.TrackScaleFactor[track.type], track.params);
+            this.tracks[track.type] = new Remuxer.TrackConverters[track.type](
+                Remuxer.TrackTimescale[track.type],
+                Remuxer.TrackScaleFactor[track.type],
+                track.params,
+            );
             if (track.offset) {
                 this.tracks[track.type].timeOffset = track.offset;
             }
             if (track.duration) {
-                this.tracks[track.type].mp4track.duration = track.duration*(this.tracks[track.type].timescale || Remuxer.TrackTimescale[track.type]);
+                this.tracks[track.type].mp4track.duration = track.duration * (this.tracks[track.type].timescale || Remuxer.TrackTimescale[track.type]);
                 this.tracks[track.type].duration = track.duration;
             } else {
                 this.tracks[track.type].duration = 1;
@@ -89,11 +99,11 @@ export class Remuxer {
 
     setTimeOffset(timeOffset, track) {
         if (this.tracks[track.type]) {
-            this.tracks[track.type].timeOffset = timeOffset;///this.tracks[track.type].scaleFactor;
+            this.tracks[track.type].timeOffset = timeOffset; ///this.tracks[track.type].scaleFactor;
         }
     }
 
-    get MSE(){
+    get MSE() {
         return this.mse;
     }
 
@@ -110,7 +120,7 @@ export class Remuxer {
             }
             tracks.push(track.mp4track);
             this.codecs.push(track.mp4track.codec);
-            track.init(initPts, initDts/*, false*/);
+            track.init(initPts, initDts /*, false*/);
             // initPts = Math.min(track.initPTS, initPts);
             // initDts = Math.min(track.initDTS, initDts);
         }
@@ -118,22 +128,21 @@ export class Remuxer {
         for (let track_type in this.tracks) {
             let track = this.tracks[track_type];
             //track.init(initPts, initDts);
-            this.initSegments[track_type] = MP4.initSegment([track.mp4track], track.duration*track.timescale, track.timescale);
+            this.initSegments[track_type] = MP4.initSegment([track.mp4track], track.duration * track.timescale, track.timescale);
             initmse.push(this.initMSE(track_type, track.mp4track.codec));
         }
 
         this.eventSource.dispatchEvent('mp4initsegement', this.tracks);
         this.initialized = true;
-        return Promise.all(initmse).then(()=>{
+        return Promise.all(initmse).then(() => {
             //this.mse.play();
             this.enabled = true;
         });
-        
     }
 
     initMSE(track_type, codec) {
         if (MSE.isSupported(this.codecs)) {
-            return this.mse.setCodec(track_type, `${PayloadType.map[track_type]}/mp4; codecs="${codec}"`).then(()=>{
+            return this.mse.setCodec(track_type, `${PayloadType.map[track_type]}/mp4; codecs="${codec}"`).then(() => {
                 this.mse.feed(track_type, this.initSegments[track_type]);
                 // this.mse.play();
                 // this.enabled = true;
@@ -150,7 +159,7 @@ export class Remuxer {
     }
 
     mseErrorDecode() {
-        if(this.tracks[2]) {
+        if (this.tracks[2]) {
             console.warn(this.tracks[2].mp4track.type);
             this.mse.buffers[2].destroy();
             delete this.tracks[2];
@@ -187,14 +196,14 @@ export class Remuxer {
         // TODO: check format
         // let data = ev.detail;
         // if (this.tracks[data.pay] && this.client.sampleQueues[data.pay].length) {
-            // console.log(`video ${data.units[0].dts}`);
+        // console.log(`video ${data.units[0].dts}`);
         for (let qidx in this.client.sampleQueues) {
             let queue = this.client.sampleQueues[qidx];
             while (queue.length) {
                 let units = queue.shift();
-                if(units){
+                if (units) {
                     for (let chunk of units) {
-                        if(this.tracks[qidx]) {
+                        if (this.tracks[qidx]) {
                             this.tracks[qidx].remux(chunk);
                         }
                     }
@@ -218,9 +227,9 @@ export class Remuxer {
         this.clientEventSource.on('audio_config', this.audioConfigListener);
         this.clientEventSource.on('tracks', this.onTracks.bind(this));
         this.clientEventSource.on('flush', this.flush.bind(this));
-        this.clientEventSource.on('clear', ()=>{
+        this.clientEventSource.on('clear', () => {
             this.reset();
-            this.mse.clear().then(()=>{
+            this.mse.clear().then(() => {
                 //this.mse.play();
                 this.initMSEHandlers();
             });

@@ -1,15 +1,13 @@
-import {appendByteArray} from '../util/binary.js';
+import { appendByteArray } from '../util/binary.js';
 
 export class PESAsm {
-
     constructor() {
         this.fragments = [];
-        this.pesLength=0;
+        this.pesLength = 0;
         this.pesPkt = null;
     }
 
     parse(frag) {
-
         if (this.extPresent) {
             let ext = this.parseExtension(frag);
             ext.data = frag.subarray(ext.offset);
@@ -37,7 +35,6 @@ export class PESAsm {
     }
 
     static PTSNormalize(value, reference) {
-
         let offset;
         if (reference === undefined) {
             return value;
@@ -59,53 +56,54 @@ export class PESAsm {
     }
 
     parseExtension(frag) {
-        let  pesFlags, pesPrefix, pesLen, pesHdrLen, pesPts, pesDts, payloadStartOffset;
-            pesFlags = frag[1];
-            if (pesFlags & 0xC0) {
-                /* PES header described here : http://dvd.sourceforge.net/dvdinfo/pes-hdr.html
+        let pesFlags, pesPrefix, pesLen, pesHdrLen, pesPts, pesDts, payloadStartOffset;
+        pesFlags = frag[1];
+        if (pesFlags & 0xc0) {
+            /* PES header described here : http://dvd.sourceforge.net/dvdinfo/pes-hdr.html
                  as PTS / DTS is 33 bit we cannot use bitwise operator in JS,
                  as Bitwise operators treat their operands as a sequence of 32 bits */
-                pesPts = (frag[3] & 0x0E) * 536870912 +// 1 << 29
-                    (frag[4] & 0xFF) * 4194304 +// 1 << 22
-                    (frag[5] & 0xFE) * 16384 +// 1 << 14
-                    (frag[6] & 0xFF) * 128 +// 1 << 7
-                    (frag[7] & 0xFE) / 2;
+            pesPts =
+                (frag[3] & 0x0e) * 536870912 + // 1 << 29
+                (frag[4] & 0xff) * 4194304 + // 1 << 22
+                (frag[5] & 0xfe) * 16384 + // 1 << 14
+                (frag[6] & 0xff) * 128 + // 1 << 7
+                (frag[7] & 0xfe) / 2;
+            // check if greater than 2^32 -1
+            if (pesPts > 4294967295) {
+                // decrement 2^33
+                pesPts -= 8589934592;
+            }
+            if (pesFlags & 0x40) {
+                pesDts =
+                    (frag[8] & 0x0e) * 536870912 + // 1 << 29
+                    (frag[9] & 0xff) * 4194304 + // 1 << 22
+                    (frag[10] & 0xfe) * 16384 + // 1 << 14
+                    (frag[11] & 0xff) * 128 + // 1 << 7
+                    (frag[12] & 0xfe) / 2;
                 // check if greater than 2^32 -1
-                if (pesPts > 4294967295) {
+                if (pesDts > 4294967295) {
                     // decrement 2^33
-                    pesPts -= 8589934592;
+                    pesDts -= 8589934592;
                 }
-                if (pesFlags & 0x40) {
-                    pesDts = (frag[8] & 0x0E ) * 536870912 +// 1 << 29
-                        (frag[9] & 0xFF ) * 4194304 +// 1 << 22
-                        (frag[10] & 0xFE ) * 16384 +// 1 << 14
-                        (frag[11] & 0xFF ) * 128 +// 1 << 7
-                        (frag[12] & 0xFE ) / 2;
-                    // check if greater than 2^32 -1
-                    if (pesDts > 4294967295) {
-                        // decrement 2^33
-                        pesDts -= 8589934592;
-                    }
-                } else {
-                    pesDts = pesPts;
-                }
+            } else {
+                pesDts = pesPts;
+            }
 
             pesHdrLen = frag[2];
             payloadStartOffset = pesHdrLen + 9;
 
             // TODO: normalize pts/dts
-            return {offset: payloadStartOffset, pts: pesPts, dts: pesDts};
+            return { offset: payloadStartOffset, pts: pesPts, dts: pesDts };
         } else {
             return null;
         }
     }
-    
-    feed(frag, shouldParse) {
 
+    feed(frag, shouldParse) {
         let res = null;
         if (shouldParse && this.fragments.length) {
             if (!this.parseHeader()) {
-                throw new Error("Invalid PES packet");
+                throw new Error('Invalid PES packet');
             }
 
             let offset = 6;
@@ -128,7 +126,7 @@ export class PESAsm {
                         continue;
                     } else {
                         data = data.subarray(offset);
-                        this.pesLength -= offset - (this.hasLength?6:0);
+                        this.pesLength -= offset - (this.hasLength ? 6 : 0);
                         offset = 0;
                     }
                 }
@@ -136,14 +134,14 @@ export class PESAsm {
                 poffset += data.byteLength;
                 this.pesLength -= data.byteLength;
             }
-            res = {data:this.pesPkt, pts: parsed.pts, dts: parsed.dts};
+            res = { data: this.pesPkt, pts: parsed.pts, dts: parsed.dts };
         } else {
             this.pesPkt = null;
         }
         this.pesLength += frag.byteLength;
 
-        if (this.fragments.length && this.fragments[this.fragments.length-1].byteLength < 6) {
-            this.fragments[this.fragments.length-1] = appendByteArray(this.fragments[0], frag);
+        if (this.fragments.length && this.fragments[this.fragments.length - 1].byteLength < 6) {
+            this.fragments[this.fragments.length - 1] = appendByteArray(this.fragments[0], frag);
         } else {
             this.fragments.push(frag);
         }

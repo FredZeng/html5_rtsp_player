@@ -1,8 +1,7 @@
-import {BitArray} from '../../core/util/binary.js';
-import {AACParser} from '../../core/parsers/aac.js';
+import { BitArray } from '../../core/util/binary.js';
+import { AACParser } from '../../core/parsers/aac.js';
 
 export class ADTS {
-
     static parseHeader(data) {
         let bits = new BitArray(data);
         bits.skipBits(15);
@@ -14,7 +13,7 @@ export class ADTS {
         if (!protectionAbs) {
             bits.skipBits(16);
         }
-        return {size: len-bits.bytepos, frameCount: cnt, offset: bits.bytepos}
+        return { size: len - bits.bytepos, frameCount: cnt, offset: bits.bytepos };
     }
 
     static parseHeaderConfig(data) {
@@ -79,18 +78,17 @@ export class ADTS {
             }
         }
 
-
         let config = new Uint8Array(configLen);
 
         config[0] = profile << 3;
         // samplingFrequencyIndex
-        config[0] |= (freq & 0x0E) >> 1;
+        config[0] |= (freq & 0x0e) >> 1;
         config[1] |= (freq & 0x01) << 7;
         // channelConfiguration
         config[1] |= channels << 3;
         if (profile === 5) {
             // adtsExtensionSampleingIndex
-            config[1] |= (extSamplingIdx & 0x0E) >> 1;
+            config[1] |= (extSamplingIdx & 0x0e) >> 1;
             config[2] = (extSamplingIdx & 0x01) << 7;
             // adtsObjectType (force to 2, chrome is checking that object type is less than 5 ???
             //    https://chromium.googlesource.com/chromium/src.git/+/master/media/formats/mp4/aac.cc
@@ -104,9 +102,9 @@ export class ADTS {
                 samplerate: AACParser.SampleRates[freq],
                 channels: channels,
             },
-            size: len-bits.bytepos,
+            size: len - bits.bytepos,
             frameCount: cnt,
-            offset: bits.bytepos
+            offset: bits.bytepos,
         };
     }
 }

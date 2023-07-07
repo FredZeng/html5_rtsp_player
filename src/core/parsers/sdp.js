@@ -1,7 +1,7 @@
-import {getTagged} from '../../deps/bp_logger';
-import {PayloadType} from '../defs.js';
+import { getTagged } from '../../deps/bp_logger';
+import { PayloadType } from '../defs.js';
 
-const Log = getTagged("parser:sdp");
+const Log = getTagged('parser:sdp');
 
 export class SDPParser {
     constructor() {
@@ -24,7 +24,7 @@ export class SDPParser {
 
             // TODO: multiple audio/video tracks
 
-            for (let line of dataString.split("\n")) {
+            for (let line of dataString.split('\n')) {
                 line = line.replace(/\r/, '');
                 if (0 === line.length) {
                     /* Empty row (last row perhaps?), skip to next */
@@ -105,7 +105,7 @@ export class SDPParser {
     _parseVersion(line) {
         let matches = line.match(/^v=([0-9]+)$/);
         if (!matches || !matches.length) {
-            Log.log('\'v=\' (Version) formatted incorrectly: ' + line);
+            Log.log("'v=' (Version) formatted incorrectly: " + line);
             return false;
         }
 
@@ -121,7 +121,7 @@ export class SDPParser {
     _parseOrigin(line) {
         let matches = line.match(/^o=([^ ]+) (-?[0-9]+) (-?[0-9]+) (IN) (IP4|IP6) ([^ ]+)$/);
         if (!matches || !matches.length) {
-            Log.log('\'o=\' (Origin) formatted incorrectly: ' + line);
+            Log.log("'o=' (Origin) formatted incorrectly: " + line);
             return false;
         }
 
@@ -139,7 +139,7 @@ export class SDPParser {
     _parseSessionName(line) {
         let matches = line.match(/^s=([^\r\n]+)$/);
         if (!matches || !matches.length) {
-            Log.log('\'s=\' (Session Name) formatted incorrectly: ' + line);
+            Log.log("'s=' (Session Name) formatted incorrectly: " + line);
             return false;
         }
 
@@ -151,7 +151,7 @@ export class SDPParser {
     _parseTiming(line) {
         let matches = line.match(/^t=([0-9]+) ([0-9]+)$/);
         if (!matches || !matches.length) {
-            Log.log('\'t=\' (Timing) formatted incorrectly: ' + line);
+            Log.log("'t=' (Timing) formatted incorrectly: " + line);
             return false;
         }
 
@@ -165,16 +165,19 @@ export class SDPParser {
     _parseMediaDescription(line, media) {
         let matches = line.match(/^m=([^ ]+) ([^ ]+) ([^ ]+)[ ]/);
         if (!matches || !matches.length) {
-            Log.log('\'m=\' (Media) formatted incorrectly: ' + line);
+            Log.log("'m=' (Media) formatted incorrectly: " + line);
             return false;
         }
 
         media.type = matches[1];
         media.port = matches[2];
         media.proto = matches[3];
-        media.fmt = line.substr(matches[0].length).split(' ').map(function (fmt, index, array) {
-            return parseInt(fmt);
-        });
+        media.fmt = line
+            .substr(matches[0].length)
+            .split(' ')
+            .map(function (fmt, index, array) {
+                return parseInt(fmt);
+            });
 
         for (let fmt of media.fmt) {
             this.mediaMap[fmt] = media;
@@ -192,7 +195,7 @@ export class SDPParser {
         var matches;
         /* Used for some cases of below switch-case */
         var separator = line.indexOf(':');
-        var attribute = line.substr(0, (-1 === separator) ? 0x7FFFFFFF : separator);
+        var attribute = line.substr(0, -1 === separator ? 0x7fffffff : separator);
         /* 0x7FF.. is default */
 
         switch (attribute) {
@@ -204,7 +207,7 @@ export class SDPParser {
                 break;
             case 'a=range':
                 matches = line.match(/^a=range:\s*([a-zA-Z-]+)=([0-9TZtz.]+|now)\s*-\s*([0-9TZtz.]*)$/);
-                media.range = [Number(matches[2] == "now" ? -1 : matches[2]), Number(matches[3]), matches[1]];
+                media.range = [Number(matches[2] == 'now' ? -1 : matches[2]), Number(matches[3]), matches[1]];
                 break;
             case 'a=control':
                 media.control = line.substr('a=control:'.length);
@@ -213,7 +216,7 @@ export class SDPParser {
             case 'a=rtpmap':
                 matches = line.match(/^a=rtpmap:(\d+) (.*)$/);
                 if (null === matches) {
-                    Log.log('Could not parse \'rtpmap\' of \'a=\'');
+                    Log.log("Could not parse 'rtpmap' of 'a='");
                     return false;
                 }
 
@@ -233,7 +236,7 @@ export class SDPParser {
             case 'a=fmtp':
                 matches = line.match(/^a=fmtp:(\d+) (.*)$/);
                 if (!matches || 0 === matches.length) {
-                    Log.log('Could not parse \'fmtp\'  of \'a=\'');
+                    Log.log("Could not parse 'fmtp'  of 'a='");
                     return false;
                 }
 

@@ -1,19 +1,23 @@
-import {getTagged} from '../deps/bp_logger.js';
-import {JSEncrypt} from '../deps/jsencrypt.js';
-import {BaseTransport} from "../core/base_transport.js";
-import {CPU_CORES} from "../core/util/browser.js";
-import SMediaError from "../media_error.js";
+import { getTagged } from '../deps/bp_logger.js';
+import { JSEncrypt } from '../deps/jsencrypt.js';
+import { BaseTransport } from '../core/base_transport.js';
+import { CPU_CORES } from '../core/util/browser.js';
+import SMediaError from '../media_error.js';
 
-const LOG_TAG = "transport:ws";
+const LOG_TAG = 'transport:ws';
 const Log = getTagged(LOG_TAG);
-const LogI = getTagged("info");
+const LogI = getTagged('info');
 const WORKER_COUNT = CPU_CORES;
 
 export default class WebsocketTransport extends BaseTransport {
-    constructor(endpoint, stream_type, options={
-        socket:`${location.protocol.replace('http', 'ws')}//${location.host}/ws/`,
-        workers: 1
-    }) {
+    constructor(
+        endpoint,
+        stream_type,
+        options = {
+            socket: `${location.protocol.replace('http', 'ws')}//${location.host}/ws/`,
+            workers: 1,
+        },
+    ) {
         super(endpoint, stream_type);
         this.proxies = [];
         this.currentProxy = 0;
@@ -23,10 +27,9 @@ export default class WebsocketTransport extends BaseTransport {
     }
 
     destroy() {
-        return this.disconnect().then(()=>{
+        return this.disconnect().then(() => {
             return super.destroy();
         });
-
     }
 
     static canTransfer(stream_type) {
@@ -38,24 +41,24 @@ export default class WebsocketTransport extends BaseTransport {
     }
 
     connect() {
-        return this.disconnect().then(()=>{
+        return this.disconnect().then(() => {
             let promises = [];
             // TODO: get mirror list
-            for (let i=0; i<this.workers; ++i) {
+            for (let i = 0; i < this.workers; ++i) {
                 let proxy = new WebSocketProxy(this.socket_url, this.endpoint, this.stream_type);
 
-                proxy.set_info_handler((info)=>{
+                proxy.set_info_handler((info) => {
                     this.eventSource.dispatchEvent('info', info);
                 });
 
-                proxy.set_error_handler((error)=>{
+                proxy.set_error_handler((error) => {
                     this.eventSource.dispatchEvent('error', error);
                 });
-                proxy.set_disconnect_handler((error)=> {
-                    this.eventSource.dispatchEvent('disconnected', {code: error.code, reason: error.reason});
+                proxy.set_disconnect_handler((error) => {
+                    this.eventSource.dispatchEvent('disconnected', { code: error.code, reason: error.reason });
                     // TODO: only reconnect on demand
                     if ([1000, 1006, 1013, 1011].includes(error.code)) {
-                        setTimeout(()=> {
+                        setTimeout(() => {
                             if (this.ready && this.ready.reject) {
                                 this.ready.reject();
                             }
@@ -64,17 +67,22 @@ export default class WebsocketTransport extends BaseTransport {
                     }
                 });
 
-                proxy.set_data_handler((data)=> {
+                proxy.set_data_handler((data) => {
                     this.dataQueue.push(new Uint8Array(data));
                     this.eventSource.dispatchEvent('data');
                 });
 
-                promises.push(proxy.connect().then(()=> {
-                    this.eventSource.dispatchEvent('connected');
-                }).catch((e)=> {
-                    this.eventSource.dispatchEvent('error');
-                    throw new Error(e);
-                }));
+                promises.push(
+                    proxy
+                        .connect()
+                        .then(() => {
+                            this.eventSource.dispatchEvent('connected');
+                        })
+                        .catch((e) => {
+                            this.eventSource.dispatchEvent('error');
+                            throw new Error(e);
+                        }),
+                );
                 this.proxies.push(proxy);
             }
             return Promise.all(promises);
@@ -83,10 +91,10 @@ export default class WebsocketTransport extends BaseTransport {
 
     disconnect() {
         let promises = [];
-        for (let i=0; i<this.proxies.length; ++i) {
+        for (let i = 0; i < this.proxies.length; ++i) {
             promises.push(this.proxies[i].close());
         }
-        this.proxies= [];
+        this.proxies = [];
         if (this.proxies.length) {
             return Promise.all(promises);
         } else {
@@ -95,7 +103,7 @@ export default class WebsocketTransport extends BaseTransport {
     }
 
     socket() {
-        return this.proxies[(this.currentProxy++)%this.proxies.length];
+        return this.proxies[this.currentProxy++ % this.proxies.length];
     }
 
     send(_data, fn) {
@@ -108,24 +116,38 @@ export default class WebsocketTransport extends BaseTransport {
 }
 
 class WSPProtocol {
-    static get PROTO() {return  'WSP';}
+    static get PROTO() {
+        return 'WSP';
+    }
 
-    static get V1_1() {return '1.1';}
+    static get V1_1() {
+        return '1.1';
+    }
 
-    static get CMD_INIT() {return 'INIT';}
-    static get CMD_JOIN() {return  'JOIN';}
-    static get CMD_WRAP() {return  'WRAP';}
-    static get CMD_GET_INFO() {return 'GET_INFO';}
+    static get CMD_INIT() {
+        return 'INIT';
+    }
+    static get CMD_JOIN() {
+        return 'JOIN';
+    }
+    static get CMD_WRAP() {
+        return 'WRAP';
+    }
+    static get CMD_GET_INFO() {
+        return 'GET_INFO';
+    }
 
     // custom close codes
-    static get WCC_INVALID_DOMAIN() {return 4000;}
+    static get WCC_INVALID_DOMAIN() {
+        return 4000;
+    }
 
-    constructor(ver){
+    constructor(ver) {
         this.ver = ver;
     }
 
-    build(cmd, data, payload=''){
-        let data_str='';
+    build(cmd, data, payload = '') {
+        let data_str = '';
         if (!data.seq) {
             data.seq = ++WSPProtocol.seq;
         }
@@ -142,20 +164,20 @@ class WSPProtocol {
         if (hdr) {
             let res = {
                 code: Number(hdr[1]),
-                msg:  hdr[2],
+                msg: hdr[2],
                 data: {},
-                payload: ''
+                payload: '',
             };
             while (lines.length) {
                 let line = lines.shift();
                 if (line) {
-                    let [k,v] = line.split(':');
+                    let [k, v] = line.split(':');
                     res.data[k.trim()] = v.trim();
                 } else {
                     break;
                 }
             }
-            res.payload = data.substr(payIdx+4);
+            res.payload = data.substr(payIdx + 4);
             return res;
         }
         return null;
@@ -164,24 +186,28 @@ class WSPProtocol {
 WSPProtocol.seq = 0;
 
 class WebSocketProxy {
-    static get CHN_CONTROL() {return 'control';}
-    static get CHN_DATA() {return  'data';}
+    static get CHN_CONTROL() {
+        return 'control';
+    }
+    static get CHN_DATA() {
+        return 'data';
+    }
 
     constructor(wsurl, endpoint, stream_type) {
         this.url = wsurl;
         this.stream_type = stream_type;
         this.endpoint = endpoint;
-        this.data_handler = ()=>{};
-        this.error_handler = ()=>{};
-        this.disconnect_handler = ()=>{};
+        this.data_handler = () => {};
+        this.error_handler = () => {};
+        this.disconnect_handler = () => {};
         this.builder = new WSPProtocol(WSPProtocol.V1_1);
         this.awaitingPromises = {};
         this.seq = 0;
         this.encryptor = new JSEncrypt();
-        this.info_handler = ()=>{};
+        this.info_handler = () => {};
     }
 
-    set_error_handler(handler){
+    set_error_handler(handler) {
         this.error_handler = handler;
     }
 
@@ -193,16 +219,16 @@ class WebSocketProxy {
         this.disconnect_handler = handler;
     }
 
-    set_info_handler(handler){
+    set_info_handler(handler) {
         this.info_handler = handler;
     }
 
     close() {
         Log.log('closing connection');
-        return new Promise((resolve)=>{
-            this.ctrlChannel.onclose = ()=>{
+        return new Promise((resolve) => {
+            this.ctrlChannel.onclose = () => {
                 if (this.dataChannel) {
-                    this.dataChannel.onclose = ()=>{
+                    this.dataChannel.onclose = () => {
                         Log.log('closed');
                         resolve();
                     };
@@ -216,41 +242,41 @@ class WebSocketProxy {
         });
     }
 
-    onDisconnect(error){
-        this.ctrlChannel.onclose=null;
+    onDisconnect(error) {
+        this.ctrlChannel.onclose = null;
         this.ctrlChannel.close();
         if (this.dataChannel) {
             this.dataChannel.onclose = null;
             this.dataChannel.close();
         }
         this.disconnect_handler(error);
-        if(error.code === WSPProtocol.WCC_INVALID_DOMAIN){
+        if (error.code === WSPProtocol.WCC_INVALID_DOMAIN) {
             let err = new SMediaError(SMediaError.MEDIA_ERR_TRANSPORT);
-            err.message = "Invalid Domain (credentials)";
-            Log.error("Invalid domain (credentials)");
+            err.message = 'Invalid Domain (credentials)';
+            Log.error('Invalid domain (credentials)');
             this.error(err);
         }
     }
 
     initDataChannel(channel_id) {
-        return new Promise((resolve, reject)=>{
+        return new Promise((resolve, reject) => {
             this.dataChannel = new WebSocket(this.url, WebSocketProxy.CHN_DATA);
             this.dataChannel.binaryType = 'arraybuffer';
-            this.dataChannel.onopen = ()=>{
+            this.dataChannel.onopen = () => {
                 let msg = this.builder.build(WSPProtocol.CMD_JOIN, {
-                    channel: channel_id
+                    channel: channel_id,
                 });
                 Log.debug(msg);
                 this.dataChannel.send(msg);
             };
-            this.dataChannel.onmessage = (ev)=>{
+            this.dataChannel.onmessage = (ev) => {
                 Log.debug(`[data]\r\n${ev.data}`);
                 let res = WSPProtocol.parse(ev.data);
                 if (!res) {
                     return reject();
                 }
 
-                this.dataChannel.onmessage=(e)=>{
+                this.dataChannel.onmessage = (e) => {
                     // Log.debug('got data');
                     if (this.data_handler) {
                         this.data_handler(e.data);
@@ -258,102 +284,101 @@ class WebSocketProxy {
                 };
                 resolve();
             };
-            this.dataChannel.onerror = (e)=>{
+            this.dataChannel.onerror = (e) => {
                 this.dataChannel.close();
                 this.error(SMediaError.MEDIA_ERR_TRANSPORT);
             };
-            this.dataChannel.onclose = (e)=>{
+            this.dataChannel.onclose = (e) => {
                 Log.error(`[data] ${e.type}. code: ${e.code}, reason: ${e.reason || 'unknown reason'}`);
                 this.onDisconnect(e);
             };
         });
     }
 
-    error(err){
+    error(err) {
         if (err !== undefined) {
             this.error_ = new SMediaError(err);
-            if (this.error_handler){
-                this.error_handler(this.error_ );
+            if (this.error_handler) {
+                this.error_handler(this.error_);
             }
         }
         return this.error_;
     }
 
-    onProxyCommandResponse(res){
+    onProxyCommandResponse(res) {
         LogI.setLevel(4);
 
         let command = res.data.command;
         let jsonObj = JSON.parse(res.payload);
 
-        if (command === WSPProtocol.CMD_GET_INFO && jsonObj && jsonObj.info)
-        {
-            LogI.log("------------- Info ---------------------");
+        if (command === WSPProtocol.CMD_GET_INFO && jsonObj && jsonObj.info) {
+            LogI.log('------------- Info ---------------------');
 
             let infoObj = jsonObj.info;
-            let licenseInfo     = infoObj.license;
-            let expiresAt       = licenseInfo.expiresAt;
+            let licenseInfo = infoObj.license;
+            let expiresAt = licenseInfo.expiresAt;
             let requestedDomain = infoObj.requestedDomain;
             let clients = infoObj.clients;
 
-            LogI.log("License expires at : ", expiresAt);
-            LogI.log("Requested domain   : ", requestedDomain);
+            LogI.log('License expires at : ', expiresAt);
+            LogI.log('Requested domain   : ', requestedDomain);
 
             if (clients) {
-                LogI.log("------------- Source list --------------");
+                LogI.log('------------- Source list --------------');
                 for (let client in clients) {
-                    LogI.log("Client: ", client);
-                    if(clients[client]) {
+                    LogI.log('Client: ', client);
+                    if (clients[client]) {
                         clients[client].forEach((src) => {
-                            LogI.log(" ", src.description, ":", src.url);
+                            LogI.log(' ', src.description, ':', src.url);
                         });
                     } else {
-                        LogI.log(" Client sources not found");
+                        LogI.log(' Client sources not found');
                     }
                 }
                 this.info_handler(infoObj);
             }
 
-            LogI.log("-----------------------------------------");
+            LogI.log('-----------------------------------------');
         }
     }
 
     connect() {
         this.encryptionKey = null;
-        return new Promise((resolve, reject)=>{
+        return new Promise((resolve, reject) => {
             this.ctrlChannel = new WebSocket(this.url, WebSocketProxy.CHN_CONTROL);
 
             this.connected = false;
 
-            this.ctrlChannel.onopen = ()=>{
+            this.ctrlChannel.onopen = () => {
                 let headers = {
-                    proto: this.stream_type
+                    proto: this.stream_type,
                 };
                 if (this.endpoint.socket) {
                     headers.socket = this.endpoint.socket;
                 } else {
                     Object.assign(headers, {
-                        host:  this.endpoint.host,
-                        port:  this.endpoint.port,
-                        client: this.endpoint.client
-                    })
+                        host: this.endpoint.host,
+                        port: this.endpoint.port,
+                        client: this.endpoint.client,
+                    });
                 }
-                 let msgLicense = this.builder.build(WSPProtocol.CMD_GET_INFO, headers);
-                 Log.debug(msgLicense);
-                 this.ctrlChannel.send(msgLicense);
+                let msgLicense = this.builder.build(WSPProtocol.CMD_GET_INFO, headers);
+                Log.debug(msgLicense);
+                this.ctrlChannel.send(msgLicense);
 
-                 let msg = this.builder.build(WSPProtocol.CMD_INIT, headers);
-                 Log.debug(msg);
-                 this.ctrlChannel.send(msg);
+                let msg = this.builder.build(WSPProtocol.CMD_INIT, headers);
+                Log.debug(msg);
+                this.ctrlChannel.send(msg);
             };
 
-            this.ctrlChannel.onmessage = (ev)=>{
+            this.ctrlChannel.onmessage = (ev) => {
                 Log.debug(`[ctrl]\r\n${ev.data}`);
 
                 let res = WSPProtocol.parse(ev.data);
                 if (!res) {
                     return reject();
                 }
-                if (res.data && res.data.command && res.data.type && res.payload){
+                if (res.data && res.data.command && res.data.type && res.payload) {
                     this.onProxyCommandResponse(res);
                     return;
                 }
@@ -362,7 +387,7 @@ class WebSocketProxy {
                     Log.error(`[ctrl]\r\n${res.code}: ${res.msg}`);
                     return reject();
                 }
-                this.ctrlChannel.onmessage = (e)=> {
+                this.ctrlChannel.onmessage = (e) => {
                     let res = WSPProtocol.parse(e.data);
                     Log.debug(`[ctrl]\r\n${e.data}`);
                     if (res.data.seq in this.awaitingPromises) {
@@ -382,12 +407,12 @@ class WebSocketProxy {
                 this.initDataChannel(res.data.channel).then(resolve).catch(reject);
             };
 
-            this.ctrlChannel.onerror = (e)=>{
+            this.ctrlChannel.onerror = (e) => {
                 Log.error(`[ctrl] ${e.type}`);
                 this.error(SMediaError.MEDIA_ERR_TRANSPORT);
                 this.ctrlChannel.close();
             };
-            this.ctrlChannel.onclose = (e)=>{
+            this.ctrlChannel.onclose = (e) => {
                 Log.error(`[ctrl] ${e.type}. code: ${e.code} ${e.reason || 'unknown reason'}`);
                 this.onDisconnect(e);
             };
@@ -415,15 +440,16 @@ class WebSocketProxy {
         // Log.debug(payload);
         let data = {
             contentLength: payload.length,
-            seq: ++WSPProtocol.seq
+            seq: ++WSPProtocol.seq,
         };
         return {
-            seq:data.seq,
-            promise: new Promise((resolve, reject)=>{
-                this.awaitingPromises[data.seq] = {resolve, reject};
+            seq: data.seq,
+            promise: new Promise((resolve, reject) => {
+                this.awaitingPromises[data.seq] = { resolve, reject };
                 let msg = this.builder.build(WSPProtocol.CMD_WRAP, data, payload);
                 Log.debug(msg);
                 this.ctrlChannel.send(this.encrypt(msg));
-            })};
+            }),
+        };
     }
 }

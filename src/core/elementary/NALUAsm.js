@@ -1,23 +1,21 @@
-import {Log} from '../../deps/bp_logger.js';
-import {NALU} from './NALU.js';
+import { Log } from '../../deps/bp_logger.js';
+import { NALU } from './NALU.js';
 
 // TODO: asm.js
 export class NALUAsm {
-
     constructor() {
         this.fragmented_nalu = null;
     }
 
-
     static parseNALHeader(hdr) {
         return {
             nri: hdr & 0x60,
-            type: hdr & 0x1F
-        }
+            type: hdr & 0x1f,
+        };
     }
 
     parseSingleNALUPacket(rawData, header, dts, pts) {
-        return new NALU(header.type,  header.nri, rawData.subarray(0), dts, pts);
+        return new NALU(header.type, header.nri, rawData.subarray(0), dts, pts);
     }
 
     parseAggregationPacket(rawData, header, dts, pts) {
@@ -34,11 +32,11 @@ export class NALUAsm {
             nal_start_idx += 2;
             let header = NALUAsm.parseNALHeader(data.getInt8(nal_start_idx));
             nal_start_idx++;
-            let nalu = this.parseSingleNALUPacket(rawData.subarray(nal_start_idx, nal_start_idx+size), header, dts, pts);
+            let nalu = this.parseSingleNALUPacket(rawData.subarray(nal_start_idx, nal_start_idx + size), header, dts, pts);
             if (nalu !== null) {
                 ret.push(nalu);
             }
-            nal_start_idx+=size;
+            nal_start_idx += size;
         }
         return ret;
     }
@@ -49,7 +47,7 @@ export class NALUAsm {
         let fu_header = data.getUint8(nal_start_idx);
         let is_start = (fu_header & 0x80) >>> 7;
         let is_end = (fu_header & 0x40) >>> 6;
-        let payload_type = fu_header & 0x1F;
+        let payload_type = fu_header & 0x1f;
         let ret = null;
 
         nal_start_idx++;
@@ -76,7 +74,6 @@ export class NALUAsm {
     }
 
     onNALUFragment(rawData, dts, pts) {
-
         let data = new DataView(rawData.buffer, rawData.byteOffset, rawData.byteLength);
 
         let header = NALUAsm.parseNALHeader(data.getUint8(0));
@@ -86,7 +83,7 @@ export class NALUAsm {
         let unit = null;
         if (header.type > 0 && header.type < 24) {
             unit = this.parseSingleNALUPacket(rawData.subarray(nal_start_idx), header, dts, pts);
-        } else if (NALU.FU_A ===  header.type || NALU.FU_B ===  header.type) {
+        } else if (NALU.FU_A === header.type || NALU.FU_B === header.type) {
             unit = this.parseFragmentationUnit(rawData.subarray(nal_start_idx), header, dts, pts);
         } else if (NALU.STAP_A === header.type || NALU.STAP_B === header.type) {
             return this.parseAggregationPacket(rawData.subarray(nal_start_idx), header, dts, pts);

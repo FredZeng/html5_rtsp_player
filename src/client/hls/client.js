@@ -1,18 +1,19 @@
-import {getTagged} from '../../deps/bp_logger.js';
-import {BaseClient} from '../../core/base_client.js';
-import {TSParser, PESType} from '../../core/parsers/ts.js';
-import {AVCPES} from '../../client/hls/pes_avc.js';
-import {AACPES} from '../../client/hls/pes_aac.js';
-import {StreamType} from '../../core/defs.js';
-import {M3U8Parser} from '../../core/parsers/m3u8.js';
-import {CPU_CORES} from '../../core/util/browser.js';
+import { getTagged } from '../../deps/bp_logger.js';
+import { BaseClient } from '../../core/base_client.js';
+import { TSParser, PESType } from '../../core/parsers/ts.js';
+import { AVCPES } from '../../client/hls/pes_avc.js';
+import { AACPES } from '../../client/hls/pes_aac.js';
+import { StreamType } from '../../core/defs.js';
+import { M3U8Parser } from '../../core/parsers/m3u8.js';
+import { CPU_CORES } from '../../core/util/browser.js';
 
-const LOG_TAG = "client:hls";
+const LOG_TAG = 'client:hls';
 const Log = getTagged(LOG_TAG);
 
-
 export default class HLSClient extends BaseClient {
-    static get CHUNKS_TO_LOAD() {return  CPU_CORES;}
+    static get CHUNKS_TO_LOAD() {
+        return CPU_CORES;
+    }
 
     constructor(transport, options) {
         super(transport, options);
@@ -20,14 +21,14 @@ export default class HLSClient extends BaseClient {
         this.parser = new TSParser();
         this.parser.addPesParser(PESType.H264, AVCPES);
         this.parser.addPesParser(PESType.AAC, AACPES);
-        this.parser.ontracks = (tracks)=>{
+        this.parser.ontracks = (tracks) => {
             let duration = 0;
             for (let chunk of this.chunks) {
-                duration+=chunk.duration;
+                duration += chunk.duration;
             }
             for (let track of tracks) {
                 track.duration = duration;
-                this.sampleQueues[track.type]=[];
+                this.sampleQueues[track.type] = [];
             }
 
             this.eventSource.dispatchEvent('tracks', tracks);
@@ -64,11 +65,11 @@ export default class HLSClient extends BaseClient {
                 if (parsed.config) {
                     this.eventSource.dispatchEvent(`${StreamType.map[parsed.type]}_config`, {
                         config: parsed.config,
-                        pay: parsed.pay
+                        pay: parsed.pay,
                     });
                 }
                 this.sampleQueues[parsed.type].push(parsed.units);
-                this.eventSource.dispatchEvent('samples', {pay: parsed.pay});
+                this.eventSource.dispatchEvent('samples', { pay: parsed.pay });
             }
             offset += TSParser.PACKET_LENGTH;
         }
@@ -87,7 +88,7 @@ export default class HLSClient extends BaseClient {
             let cs = this.chunkSeq.get(seq);
             this.pendingChunks.delete(cs.idx);
             this.chunkSeq.delete(seq);
-            this.parse(data?data:this.seqMap.get(seq));
+            this.parse(data ? data : this.seqMap.get(seq));
             this.seqMap.delete(seq);
             cs.promise.resolve();
         } else {
@@ -131,12 +132,14 @@ export default class HLSClient extends BaseClient {
             this.resume = true;
             this.eventSource.dispatchEvent('clear');
             Log.debug('waiting for transport ready');
-            this.transport.ready.then(()=> {
-                Log.debug('loading playlist');
-                this.loadPlaylist();
-            }).catch((e)=>{
-                Log.debug('reject transport', e);
-            });
+            this.transport.ready
+                .then(() => {
+                    Log.debug('loading playlist');
+                    this.loadPlaylist();
+                })
+                .catch((e) => {
+                    Log.debug('reject transport', e);
+                });
         }
     }
 
@@ -160,44 +163,46 @@ export default class HLSClient extends BaseClient {
         }
     }
 
-    loadPlaylist(playlist=null) {
-        let url = playlist?playlist.url:this.sourceUrl;
-        this.send(`GET ${url} HTTP/1.1\r\nHost: ${this.transport.endpoint.host}\r\n\r\n`).then((data)=>{
-            let entries = data.payload.split('\r\n\r\n');
-            let http = entries[0].split('\r\n');
-            let status = http[0].match(new RegExp(`HTTP/\\d\\.\\d\\s+(\\d+)\\s+(\\w+)`));
-            if (!status || status[1]>=400) {
-                Log.error('bad playlist response');
-                return;
-            }
-            Log.debug(status);
-            let baseUrl = url.substr(0, url.lastIndexOf('/'));
-            let playlist = M3U8Parser.parse(entries[1], baseUrl);
-            if (playlist.chunks.length) {
-                this.chunks = playlist.chunks;
-                this.resume = true;
-                // Load first chunk to detect initial timestamps
-                this.loadChunks(1);
-            } else if (playlist.playlists) {
-                this.playlists = playlist.playlists;
-                // TODO: check playlist support
-                this.loadPlaylist(this.playlists[0])
-            }
-            // this.chunks = entries[1].split('\n').map((e)=>{e.replace(/\r/, ''); return e;});
-            // this.loadChunk();
-        }).catch((e)=>{
-            this.resume = false;
-        });
+    loadPlaylist(playlist = null) {
+        let url = playlist ? playlist.url : this.sourceUrl;
+        this.send(`GET ${url} HTTP/1.1\r\nHost: ${this.transport.endpoint.host}\r\n\r\n`)
+            .then((data) => {
+                let entries = data.payload.split('\r\n\r\n');
+                let http = entries[0].split('\r\n');
+                let status = http[0].match(new RegExp(`HTTP/\\d\\.\\d\\s+(\\d+)\\s+(\\w+)`));
+                if (!status || status[1] >= 400) {
+                    Log.error('bad playlist response');
+                    return;
+                }
+                Log.debug(status);
+                let baseUrl = url.substr(0, url.lastIndexOf('/'));
+                let playlist = M3U8Parser.parse(entries[1], baseUrl);
+                if (playlist.chunks.length) {
+                    this.chunks = playlist.chunks;
+                    this.resume = true;
+                    // Load first chunk to detect initial timestamps
+                    this.loadChunks(1);
+                } else if (playlist.playlists) {
+                    this.playlists = playlist.playlists;
+                    // TODO: check playlist support
+                    this.loadPlaylist(this.playlists[0]);
+                }
+                // this.chunks = entries[1].split('\n').map((e)=>{e.replace(/\r/, ''); return e;});
+                // this.loadChunk();
+            })
+            .catch((e) => {
+                this.resume = false;
+            });
     }
 
     loadChunk(chunk, idx) {
-        return new Promise((resolve, reject)=>{
-            this.send(`GET ${chunk.url}?${Math.random()} HTTP/1.1\r\nHost: ${this.transport.endpoint.host}\r\n\r\n`, (seq)=>{
+        return new Promise((resolve, reject) => {
+            this.send(`GET ${chunk.url}?${Math.random()} HTTP/1.1\r\nHost: ${this.transport.endpoint.host}\r\n\r\n`, (seq) => {
                 this.chunkSeq.set(seq, {
                     idx: idx,
-                    promise: {resolve, reject}
+                    promise: { resolve, reject },
                 });
-            }).then((res)=>{
+            }).then((res) => {
                 let lines = res.payload.split('\r\n');
                 let [version, code, msg] = lines[0].split(' ');
                 if (Number(code) >= 300) {
@@ -211,35 +216,37 @@ export default class HLSClient extends BaseClient {
     }
 
     loadChunks(count) {
-        if (this.chunkIdx>= this.chunks.length) return;
+        if (this.chunkIdx >= this.chunks.length) return;
         let promises = [];
         if (this.pendingChunks.size) {
             Log.debug(`Reload chunks: ${Array.from(this.pendingChunks)}`);
             for (let i of this.pendingChunks) {
                 let chunk = this.chunks[i];
-                Log.log(`Loading ${chunk.url} (${i+1} of ${this.chunks.length})`);
+                Log.log(`Loading ${chunk.url} (${i + 1} of ${this.chunks.length})`);
                 promises.push(this.loadChunk(chunk, i));
             }
         } else {
-            for (let i = this.chunkIdx; i < this.chunkIdx+count; ++i) {
-                let chunk = this.chunks[i];//.shift();
-                Log.log(`Loading ${chunk.url} (${i+1} of ${this.chunks.length})`);
+            for (let i = this.chunkIdx; i < this.chunkIdx + count; ++i) {
+                let chunk = this.chunks[i]; //.shift();
+                Log.log(`Loading ${chunk.url} (${i + 1} of ${this.chunks.length})`);
                 this.pendingChunks.add(i);
 
                 promises.push(this.loadChunk(chunk, i));
-                if (i+1 >= this.chunks.length) return;
+                if (i + 1 >= this.chunks.length) return;
             }
         }
-        return Promise.all(promises).then(()=>{
-            Log.log('chunk loaded');
-            // TODO: check queue overflow
-            this.chunkIdx+=HLSClient.CHUNKS_TO_LOAD;
-            if (!this.paused) {
-                this.eventSource.dispatchEvent('needData');
-            }
-        }).catch((e)=>{
-            Log.error(e);
-            // this.stop();
-        });
+        return Promise.all(promises)
+            .then(() => {
+                Log.log('chunk loaded');
+                // TODO: check queue overflow
+                this.chunkIdx += HLSClient.CHUNKS_TO_LOAD;
+                if (!this.paused) {
+                    this.eventSource.dispatchEvent('needData');
+                }
+            })
+            .catch((e) => {
+                Log.error(e);
+                // this.stop();
+            });
     }
 }

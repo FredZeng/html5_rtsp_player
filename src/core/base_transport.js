@@ -1,9 +1,11 @@
-import {EventEmitter} from "../deps/bp_event.js";
+import { EventEmitter } from '../deps/bp_event.js';
 
 export class BaseRequest {
     constructor(data) {
         this.data = data;
-        this.before = (data)=>{return Promise.resolve(data)};
+        this.before = (data) => {
+            return Promise.resolve(data);
+        };
     }
 
     send() {
@@ -16,7 +18,7 @@ export class BaseRequest {
 }
 
 export class BaseTransport {
-    constructor(endpoint, stream_type, config={}) {
+    constructor(endpoint, stream_type, config = {}) {
         this.stream_type = stream_type;
         this.endpoint = endpoint;
         this.eventSource = new EventEmitter();
@@ -26,7 +28,7 @@ export class BaseTransport {
     static canTransfer(stream_type) {
         return BaseTransport.streamTypes().includes(stream_type);
     }
-    
+
     static streamTypes() {
         return [];
     }
@@ -44,7 +46,7 @@ export class BaseTransport {
     }
 
     reconnect() {
-        return this.disconnect().then(()=>{
+        return this.disconnect().then(() => {
             return this.connect();
         });
     }

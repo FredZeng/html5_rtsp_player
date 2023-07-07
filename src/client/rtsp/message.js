@@ -1,22 +1,24 @@
 export class RTSPMessage {
-    static get RTSP_1_0() {return  "RTSP/1.0";}
+    static get RTSP_1_0() {
+        return 'RTSP/1.0';
+    }
 
     constructor(_rtsp_version) {
         this.version = _rtsp_version;
     }
 
-    build(_cmd, _host, _params={}, _payload=null) {
+    build(_cmd, _host, _params = {}, _payload = null) {
         let requestString = `${_cmd} ${_host} ${this.version}\r\n`;
         for (let param in _params) {
-            requestString+=`${param}: ${_params[param]}\r\n`
+            requestString += `${param}: ${_params[param]}\r\n`;
         }
         // TODO: binary payload
         if (_payload) {
-            requestString+=`Content-Length: ${_payload.length}\r\n`
+            requestString += `Content-Length: ${_payload.length}\r\n`;
         }
-        requestString+='\r\n';
+        requestString += '\r\n';
         if (_payload) {
-            requestString+=_payload;
+            requestString += _payload;
         }
         return requestString;
     }
@@ -24,10 +26,10 @@ export class RTSPMessage {
     parse(_data) {
         let lines = _data.split('\r\n');
         let parsed = {
-            headers:{},
-            body:null,
+            headers: {},
+            body: null,
             code: 0,
-            statusLine: ''
+            statusLine: '',
         };
 
         let match;
@@ -36,7 +38,7 @@ export class RTSPMessage {
         let lineIdx = 1;
 
         while (lines[lineIdx]) {
-            let [k,v] = lines[lineIdx].split(/:(.+)/);
+            let [k, v] = lines[lineIdx].split(/:(.+)/);
             parsed.headers[k.toLowerCase()] = v.trim();
             lineIdx++;
         }
@@ -45,7 +47,6 @@ export class RTSPMessage {
 
         return parsed;
     }
-
 }
 
 export const MessageBuilder = new RTSPMessage(RTSPMessage.RTSP_1_0);

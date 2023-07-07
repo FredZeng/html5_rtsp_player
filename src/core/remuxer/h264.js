@@ -1,42 +1,41 @@
-import {getTagged} from '../../deps/bp_logger.js';
-import {H264Parser} from '../parsers/h264.js';
-import {BaseRemuxer} from './base.js';
+import { getTagged } from '../../deps/bp_logger.js';
+import { H264Parser } from '../parsers/h264.js';
+import { BaseRemuxer } from './base.js';
 
-const Log = getTagged("remuxer:h264"); 
+const Log = getTagged('remuxer:h264');
 // TODO: asm.js
 export class H264Remuxer extends BaseRemuxer {
-
-    constructor(timescale, scaleFactor=1, params={}) {
+    constructor(timescale, scaleFactor = 1, params = {}) {
         super(timescale, scaleFactor);
 
         this.nextDts = undefined;
         this.readyToDecode = false;
         this.initialized = false;
 
-        this.firstDTS=0;
-        this.firstPTS=0;
-        this.lastDTS=undefined;
+        this.firstDTS = 0;
+        this.firstPTS = 0;
+        this.lastDTS = undefined;
         this.lastSampleDuration = 0;
         this.lastDurations = [];
         // this.timescale = 90000;
-        this.tsAlign = Math.round(this.timescale/60);
+        this.tsAlign = Math.round(this.timescale / 60);
 
-        this.mp4track={
-            id:BaseRemuxer.getTrackID(),
+        this.mp4track = {
+            id: BaseRemuxer.getTrackID(),
             type: 'video',
-            len:0,
-            fragmented:true,
-            sps:'',
-            pps:'',
-            width:0,
-            height:0,
+            len: 0,
+            fragmented: true,
+            sps: '',
+            pps: '',
+            width: 0,
+            height: 0,
             timescale: timescale,
             duration: timescale,
-            samples: []
+            samples: [],
         };
         this.samples = [];
         this.lastGopDTS = -99999999999999;
-        this.gop=[];
+        this.gop = [];
         this.firstUnit = true;
 
         this.h264 = new H264Parser(this);
@@ -46,7 +45,7 @@ export class H264Remuxer extends BaseRemuxer {
             if ((arr[0] & 0x1f) === 7) {
                 this.setSPS(arr);
             } else {
-                Log.warn("bad SPS in SDP")
+                Log.warn('bad SPS in SDP');
             }
         }
         if (params.pps) {
@@ -54,7 +53,7 @@ export class H264Remuxer extends BaseRemuxer {
             if ((arr[0] & 0x1f) === 8) {
                 this.setPPS(arr);
             } else {
-                Log.warn("bad PPS in SDP")
+                Log.warn('bad PPS in SDP');
             }
         }
 
@@ -82,11 +81,11 @@ export class H264Remuxer extends BaseRemuxer {
     remux(nalu) {
         if (this.lastGopDTS < nalu.dts) {
             this.gop.sort(BaseRemuxer.dtsSortFunc);
-			
-			if (this.gop.length > 1) {
+
+            if (this.gop.length > 1) {
                 // Aggregate multi-slices which belong to one frame
                 const groupedGop = BaseRemuxer.groupByDts(this.gop);
-                this.gop = Object.values(groupedGop).map(group => {
+                this.gop = Object.values(groupedGop).map((group) => {
                     return group.reduce((preUnit, curUnit) => {
                         const naluData = curUnit.getData();
                         naluData.set(new Uint8Array([0x0, 0x0, 0x0, 0x1]));
@@ -95,7 +94,7 @@ export class H264Remuxer extends BaseRemuxer {
                     });
                 });
             }
-			
+
             for (let unit of this.gop) {
                 // if (this.firstUnit) {
                 //     unit.ntype = 5;//NALU.IDR;
@@ -106,7 +105,7 @@ export class H264Remuxer extends BaseRemuxer {
                 }
             }
             this.gop = [];
-            this.lastGopDTS = nalu.dts
+            this.lastGopDTS = nalu.dts;
         }
         if (this.h264.parseNAL(nalu)) {
             this.gop.push(nalu);
@@ -120,9 +119,8 @@ export class H264Remuxer extends BaseRemuxer {
 
         let payload = new Uint8Array(this.mp4track.len);
         let offset = 0;
-        let samples=this.mp4track.samples;
+        let samples = this.mp4track.samples;
         let mp4Sample, lastDTS, pts, dts;
-
 
         // Log.debug(this.samples.map((e)=>{
         //     return Math.round((e.dts - this.initDTS));
@@ -138,11 +136,11 @@ export class H264Remuxer extends BaseRemuxer {
             }
 
             let unit = sample.unit;
-            
-            pts = sample.pts- this.initDTS; // /*Math.round(*/(sample.pts - this.initDTS)/*/this.tsAlign)*this.tsAlign*/;
+
+            pts = sample.pts - this.initDTS; // /*Math.round(*/(sample.pts - this.initDTS)/*/this.tsAlign)*this.tsAlign*/;
             dts = sample.dts - this.initDTS; ///*Math.round(*/(sample.dts - this.initDTS)/*/this.tsAlign)*this.tsAlign*/;
             // ensure DTS is not bigger than PTS
-            dts = Math.min(pts,dts);
+            dts = Math.min(pts, dts);
             // if not first AVC sample of video track, normalize PTS/DTS with previous sample value
             // and ensure that sample duration is positive
             if (lastDTS !== undefined) {
@@ -164,7 +162,6 @@ export class H264Remuxer extends BaseRemuxer {
                     let delta = dts - this.nextDts;
                     // if fragment are contiguous, or delta less than 600ms, ensure there is no overlap/hole between fragments
                     if (/*contiguous ||*/ Math.abs(Math.round(BaseRemuxer.toMS(delta))) < 600) {
-
                         if (delta) {
                             // set DTS to next DTS
                             // Log.debug(`Video/PTS/DTS adjusted: ${pts}->${Math.max(pts - delta, this.nextDts)}/${dts}->${this.nextDts},delta:${delta}`);
@@ -192,8 +189,8 @@ export class H264Remuxer extends BaseRemuxer {
                     isLeading: 0,
                     isDependedOn: 0,
                     hasRedundancy: 0,
-                    degradPrio: 0
-                }
+                    degradPrio: 0,
+                },
             };
             let flags = mp4Sample.flags;
             if (sample.unit.isKeyframe() === true) {
@@ -214,7 +211,12 @@ export class H264Remuxer extends BaseRemuxer {
 
         if (!samples.length) return null;
 
-        let avgDuration = this.lastDurations.reduce(function(a, b) { return (a|0) + (b|0); }, 0) / (this.lastDurations.length||1)|0;
+        let avgDuration =
+            (this.lastDurations.reduce(function (a, b) {
+                return (a | 0) + (b | 0);
+            }, 0) /
+                (this.lastDurations.length || 1)) |
+            0;
         if (samples.length >= 2) {
             this.lastSampleDuration = avgDuration;
             mp4Sample.duration = avgDuration;
@@ -222,7 +224,7 @@ export class H264Remuxer extends BaseRemuxer {
             mp4Sample.duration = this.lastSampleDuration;
         }
 
-        if(samples.length && (!this.nextDts || navigator.userAgent.toLowerCase().indexOf('chrome') > -1)) {
+        if (samples.length && (!this.nextDts || navigator.userAgent.toLowerCase().indexOf('chrome') > -1)) {
             let flags = samples[0].flags;
             // chrome workaround, mark first sample as being a Random Access Point to avoid sourcebuffer append issue
             // https://code.google.com/p/chromium/issues/detail?id=229412

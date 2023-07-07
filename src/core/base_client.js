@@ -1,19 +1,19 @@
-import {Log} from '../deps/bp_logger.js';
-import {EventEmitter} from '../deps/bp_event.js';
+import { Log } from '../deps/bp_logger.js';
+import { EventEmitter } from '../deps/bp_event.js';
 
 export class BaseClient {
-    constructor(options={flush: 100}) {
+    constructor(options = { flush: 100 }) {
         this.options = options;
         this.eventSource = new EventEmitter();
 
         Object.defineProperties(this, {
-            sourceUrl: {value: null, writable: true},   // TODO: getter with validator
-            paused: {value: true, writable: true},
-            seekable: {value: false, writable: true},
-            connected: {value: false, writable: true}
+            sourceUrl: { value: null, writable: true }, // TODO: getter with validator
+            paused: { value: true, writable: true },
+            seekable: { value: false, writable: true },
+            connected: { value: false, writable: true },
         });
 
-        this._onData = ()=>{
+        this._onData = () => {
             if (this.connected) {
                 while (this.transport.dataQueue.length) {
                     this.onData(this.transport.dataQueue.pop());
@@ -25,9 +25,9 @@ export class BaseClient {
     }
 
     static streamType() {
-        return null;    
+        return null;
     }
-    
+
     destroy() {
         this.detachTransport();
     }
@@ -50,9 +50,7 @@ export class BaseClient {
             this.transport = null;
         }
     }
-    reset() {
-
-    }
+    reset() {}
 
     start() {
         Log.log('Client started');
@@ -66,9 +64,7 @@ export class BaseClient {
         // this.stopStreamFlush();
     }
 
-    seek(timeOffset) {
-
-    }
+    seek(timeOffset) {}
 
     setSource(source) {
         this.stop();
@@ -77,7 +73,7 @@ export class BaseClient {
     }
 
     startStreamFlush() {
-        this.flushInterval = setInterval(()=>{
+        this.flushInterval = setInterval(() => {
             if (!this.paused) {
                 this.eventSource.dispatchEvent('flush');
             }
@@ -88,9 +84,7 @@ export class BaseClient {
         clearInterval(this.flushInterval);
     }
 
-    onData(data) {
-
-    }
+    onData(data) {}
 
     onConnected() {
         if (!this.seekable) {

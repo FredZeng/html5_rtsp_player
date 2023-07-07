@@ -1,15 +1,14 @@
-import {NALUAsm} from "../../../../core/elementary/NALUAsm.js";
-import {AACAsm} from "../../../../core/elementary/AACAsm.js";
+import { NALUAsm } from '../../../../core/elementary/NALUAsm.js';
+import { AACAsm } from '../../../../core/elementary/AACAsm.js';
 
 export class RTPPayloadParser {
-
     constructor() {
         this.h264parser = new RTPH264Parser();
         this.aacparser = new RTPAACParser();
     }
 
     parse(rtp) {
-        if (rtp.media.type=='video') {
+        if (rtp.media.type == 'video') {
             return this.h264parser.parse(rtp);
         } else if (rtp.media.type == 'audio') {
             return this.aacparser.parse(rtp);
@@ -29,7 +28,6 @@ class RTPH264Parser {
 }
 
 class RTPAACParser {
-
     constructor() {
         this.scale = 1;
         this.asm = new AACAsm();

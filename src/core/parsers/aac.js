@@ -1,14 +1,9 @@
-import {BitArray, bitSlice} from '../util/binary.js';
+import { BitArray, bitSlice } from '../util/binary.js';
 
 export class AACParser {
-    static get SampleRates() {return  [
-        96000, 88200,
-        64000, 48000,
-        44100, 32000,
-        24000, 22050,
-        16000, 12000,
-        11025, 8000,
-        7350];}
+    static get SampleRates() {
+        return [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+    }
 
     // static Profile = [
     //     0: Null
@@ -22,13 +17,14 @@ export class AACParser {
 
     static parseAudioSpecificConfig(bytesOrBits) {
         let config;
-        if (bytesOrBits.byteLength) { // is byteArray
+        if (bytesOrBits.byteLength) {
+            // is byteArray
             config = new BitArray(bytesOrBits);
         } else {
             config = bytesOrBits;
         }
 
-        let bitpos = config.bitpos+(config.src.byteOffset+config.bytepos)*8;
+        let bitpos = config.bitpos + (config.src.byteOffset + config.bytepos) * 8;
         let prof = config.readBits(5);
         this.codec = `mp4a.40.${prof}`;
         let sfi = config.readBits(4);
@@ -36,11 +32,11 @@ export class AACParser {
         let channels = config.readBits(4);
 
         return {
-            config: bitSlice(new Uint8Array(config.src.buffer), bitpos, bitpos+16),
+            config: bitSlice(new Uint8Array(config.src.buffer), bitpos, bitpos + 16),
             codec: `mp4a.40.${prof}`,
             samplerate: AACParser.SampleRates[sfi],
-            channels: channels
-        }
+            channels: channels,
+        };
     }
 
     static parseStreamMuxConfig(bytes) {

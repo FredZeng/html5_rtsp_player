@@ -1,14 +1,13 @@
-import {getTagged} from '../../deps/bp_logger.js';
+import { getTagged } from '../../deps/bp_logger.js';
 
-import {RTSPClientSM as RTSPClient} from './client.js';
-import {Url} from '../../core/util/url.js';
-import {RTSPError} from "./client";
+import { RTSPClientSM as RTSPClient } from './client.js';
+import { Url } from '../../core/util/url.js';
+import { RTSPError } from './client';
 
-const LOG_TAG = "rtsp:stream";
+const LOG_TAG = 'rtsp:stream';
 const Log = getTagged(LOG_TAG);
 
 export class RTSPStream {
-
     constructor(client, track) {
         this.state = null;
         this.client = client;
@@ -30,7 +29,7 @@ export class RTSPStream {
     start(lastSetupPromise = null) {
         if (lastSetupPromise != null) {
             // if a setup was already made, use the same session
-            return lastSetupPromise.then((obj) => this.sendSetup(obj.session))
+            return lastSetupPromise.then((obj) => this.sendSetup(obj.session));
         } else {
             return this.sendSetup();
         }
@@ -50,18 +49,25 @@ export class RTSPStream {
             /* Check the end of the address for a separator */
             if (this.client.contentBase[this.client.contentBase.length - 1] !== '/') {
                 return `${this.client.contentBase}/${track.control}`;
-            } 
+            }
 
             /* Should probably check session level control before this */
             return `${this.client.contentBase}${track.control}`;
-        }
-        else {//need return default
+        } else {
+            //need return default
             return track.control;
         }
-        Log.error('Can\'t determine track URL from ' +
-            'block.control:' + track.control + ', ' +
-            'session.control:' + sessionBlock.control + ', and ' +
-            'content-base:' + this.client.contentBase);
+        Log.error(
+            "Can't determine track URL from " +
+                'block.control:' +
+                track.control +
+                ', ' +
+                'session.control:' +
+                sessionBlock.control +
+                ', and ' +
+                'content-base:' +
+                this.client.contentBase,
+        );
     }
 
     getControlURL() {
@@ -78,7 +84,7 @@ export class RTSPStream {
     sendKeepalive() {
         if (this.client.methods.includes('GET_PARAMETER')) {
             return this.client.sendRequest('GET_PARAMETER', this.getSetupURL(this.track), {
-                'Session': this.session
+                Session: this.session,
             });
         } else {
             return this.client.sendRequest('OPTIONS', '*');
@@ -115,12 +121,12 @@ export class RTSPStream {
     sendSetup(session = null) {
         this.state = RTSPClient.STATE_SETUP;
         this.rtpChannel = this.client.interleaveChannelIndex;
-        let interleavedChannels = this.client.interleaveChannelIndex++ + "-" + this.client.interleaveChannelIndex++;
+        let interleavedChannels = this.client.interleaveChannelIndex++ + '-' + this.client.interleaveChannelIndex++;
         let params = {
-            'Transport': `RTP/AVP/TCP;unicast;interleaved=${interleavedChannels}`,
-            'Date': new Date().toUTCString()
+            Transport: `RTP/AVP/TCP;unicast;interleaved=${interleavedChannels}`,
+            Date: new Date().toUTCString(),
         };
-        if(session){
+        if (session) {
             params.Session = session;
         }
         return this.client.sendRequest('SETUP', this.getSetupURL(this.track), params).then((_data) => {
@@ -148,7 +154,7 @@ export class RTSPStream {
             }*/
             this.client.useRTPChannel(this.rtpChannel);
             this.startKeepAlive();
-            return {track: this.track, data: _data, session: this.session[0]};
+            return { track: this.track, data: _data, session: this.session[0] };
         });
     }
 }

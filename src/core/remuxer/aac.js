@@ -1,15 +1,14 @@
-import {getTagged} from '../../deps/bp_logger.js';
-import {MSE} from '../presentation/mse.js';
-import {BaseRemuxer} from './base.js';
+import { getTagged } from '../../deps/bp_logger.js';
+import { MSE } from '../presentation/mse.js';
+import { BaseRemuxer } from './base.js';
 
-const Log = getTagged("remuxer:aac");
+const Log = getTagged('remuxer:aac');
 // TODO: asm.js
 export class AACRemuxer extends BaseRemuxer {
-
-    constructor(timescale, scaleFactor = 1, params={}) {
+    constructor(timescale, scaleFactor = 1, params = {}) {
         super(timescale, scaleFactor);
 
-        this.codecstring=MSE.CODEC_AAC;
+        this.codecstring = MSE.CODEC_AAC;
         this.units = [];
         this.initDTS = undefined;
         this.nextAacPts = undefined;
@@ -19,18 +18,18 @@ export class AACRemuxer extends BaseRemuxer {
         this.duration = params.duration || 1;
         this.initialized = false;
 
-        this.mp4track={
-            id:BaseRemuxer.getTrackID(),
+        this.mp4track = {
+            id: BaseRemuxer.getTrackID(),
             type: 'audio',
-            fragmented:true,
-            channelCount:0,
+            fragmented: true,
+            channelCount: 0,
             audiosamplerate: this.timescale,
             duration: 0,
             timescale: this.timescale,
             volume: 1,
             samples: [],
             config: '',
-            len: 0
+            len: 0,
         };
         if (params.config) {
             this.setConfig(params.config);
@@ -41,7 +40,7 @@ export class AACRemuxer extends BaseRemuxer {
         this.mp4track.channelCount = config.channels;
         this.mp4track.audiosamplerate = config.samplerate;
         if (!this.mp4track.duration) {
-            this.mp4track.duration = (this.duration?this.duration:1)*config.samplerate;
+            this.mp4track.duration = (this.duration ? this.duration : 1) * config.samplerate;
         }
         this.mp4track.timescale = config.samplerate;
         this.mp4track.config = config.config;
@@ -60,13 +59,13 @@ export class AACRemuxer extends BaseRemuxer {
 
     getPayload() {
         if (!this.readyToDecode || !this.samples.length) return null;
-        this.samples.sort(function(a, b) {
-            return (a.dts-b.dts);
+        this.samples.sort(function (a, b) {
+            return a.dts - b.dts;
         });
 
         let payload = new Uint8Array(this.mp4track.len);
         let offset = 0;
-        let samples=this.mp4track.samples;
+        let samples = this.mp4track.samples;
         let mp4Sample, lastDTS, pts, dts;
 
         while (this.samples.length) {
@@ -84,7 +83,7 @@ export class AACRemuxer extends BaseRemuxer {
                 if (this.nextDts) {
                     let delta = Math.round(this.scaled(pts - this.nextAacPts));
                     // if fragment are contiguous, or delta less than 600ms, ensure there is no overlap/hole between fragments
-                    if (/*contiguous || */Math.abs(delta) < 600) {
+                    if (/*contiguous || */ Math.abs(delta) < 600) {
                         // log delta
                         if (delta) {
                             if (delta > 0) {
@@ -92,7 +91,7 @@ export class AACRemuxer extends BaseRemuxer {
                                 // if we have frame overlap, overlapping for more than half a frame duraion
                             } else if (delta < -12) {
                                 // drop overlapping audio frames... browser will deal with it
-                                Log.log(`${(-delta)} ms overlapping between AAC samples detected, drop frame`);
+                                Log.log(`${-delta} ms overlapping between AAC samples detected, drop frame`);
                                 this.mp4track.len -= unit.getSize();
                                 continue;
                             }
@@ -108,14 +107,14 @@ export class AACRemuxer extends BaseRemuxer {
             mp4Sample = {
                 size: unit.getSize(),
                 cts: 0,
-                duration:1024,
+                duration: 1024,
                 flags: {
                     isLeading: 0,
                     isDependedOn: 0,
                     hasRedundancy: 0,
                     degradPrio: 0,
-                    dependsOn: 1
-                }
+                    dependsOn: 1,
+                },
             };
 
             payload.set(unit.getData(), offset);
@@ -124,7 +123,7 @@ export class AACRemuxer extends BaseRemuxer {
             lastDTS = dts;
         }
         if (!samples.length) return null;
-        this.nextDts =pts+this.expectedSampleDuration;
+        this.nextDts = pts + this.expectedSampleDuration;
         return new Uint8Array(payload.buffer, 0, this.mp4track.len);
     }
 }

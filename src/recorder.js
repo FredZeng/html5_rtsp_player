@@ -1,4 +1,4 @@
-import {MP4} from './core/iso-bmff/mp4-generator.js';
+import { MP4 } from './core/iso-bmff/mp4-generator.js';
 
 export class MediaRecorder {
     constructor(parent, prefix) {
@@ -27,12 +27,12 @@ export class MediaRecorder {
         let tracks_list = [];
         for (let key in tracks) {
             let type = tracks[key].mp4track.type;
-            if (type === "video" || type === "audio") {
+            if (type === 'video' || type === 'audio') {
                 tracks_list.push(tracks[key].mp4track);
             }
         }
 
-        this.header = MP4.initSegment(tracks_list, tracks[1].duration*tracks[1].timescale, tracks[1].timescale)
+        this.header = MP4.initSegment(tracks_list, tracks[1].duration * tracks[1].timescale, tracks[1].timescale);
     }
 
     pushData(event) {
@@ -60,7 +60,7 @@ export class MediaRecorder {
     }
 
     pause(value) {
-        if (this.isRecording || this.isPaused) { 
+        if (this.isRecording || this.isPaused) {
             this.record(!value);
             this.isPaused = value;
         }
@@ -114,4 +114,3 @@ export class MediaRecorder {
         this.dettachSource();
     }
 }
-
