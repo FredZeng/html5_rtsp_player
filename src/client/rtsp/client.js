@@ -12,6 +12,7 @@ import { PayloadType } from '../../core/defs.js';
 import { base64ToArrayBuffer, hexToByteArray } from '../../core/util/binary.js';
 import { AACParser } from '../../core/parsers/aac.js';
 import { RTSPSession } from './session';
+import { RTSPStatus, RTSPError } from './status.js';
 
 const LOG_TAG = 'client:rtsp';
 const Log = getTagged(LOG_TAG);
@@ -98,48 +99,10 @@ class AuthError extends Error {
     }
 }
 
-export class RTSPError extends Error {
-    constructor(data) {
-        super(data.msg);
-        this.data = data;
-    }
-}
-
 export class RTSPClientSM extends StateMachine {
     static get USER_AGENT() {
         return 'SFRtsp 0.3';
     }
-    static get STATE_INITIAL() {
-        return 1 << 0;
-    }
-    static get STATE_OPTIONS() {
-        return 1 << 1;
-    }
-    static get STATE_DESCRIBE() {
-        return 1 << 2;
-    }
-    static get STATE_SETUP() {
-        return 1 << 3;
-    }
-    static get STATE_STREAMS() {
-        return 1 << 4;
-    }
-    static get STATE_TEARDOWN() {
-        return 1 << 5;
-    }
-    static get STATE_PLAY() {
-        return 1 << 6;
-    }
-    static get STATE_PLAYING() {
-        return 1 << 7;
-    }
-    static get STATE_PAUSE() {
-        return 1 << 8;
-    }
-    static get STATE_PAUSED() {
-        return 1 << 9;
-    }
-    // static STATE_PAUSED = 1 << 6;
 
     constructor(parent) {
         super();
@@ -151,41 +114,41 @@ export class RTSPClientSM extends StateMachine {
         this.sessions = {};
         this.ontracks = null;
 
-        this.addState(RTSPClientSM.STATE_INITIAL, {})
-            .addState(RTSPClientSM.STATE_OPTIONS, {
+        this.addState(RTSPStatus.STATE_INITIAL, {})
+            .addState(RTSPStatus.STATE_OPTIONS, {
                 activate: this.sendOptions,
                 finishTransition: this.onOptions,
             })
-            .addState(RTSPClientSM.STATE_DESCRIBE, {
+            .addState(RTSPStatus.STATE_DESCRIBE, {
                 activate: this.sendDescribe,
                 finishTransition: this.onDescribe,
             })
-            .addState(RTSPClientSM.STATE_SETUP, {
+            .addState(RTSPStatus.STATE_SETUP, {
                 activate: this.sendSetup,
                 finishTransition: this.onSetup,
             })
-            .addState(RTSPClientSM.STATE_STREAMS, {})
-            .addState(RTSPClientSM.STATE_TEARDOWN, {
+            .addState(RTSPStatus.STATE_STREAMS, {})
+            .addState(RTSPStatus.STATE_TEARDOWN, {
                 activate: () => {
                     this.started = false;
                 },
                 finishTransition: () => {
-                    return this.transitionTo(RTSPClientSM.STATE_INITIAL);
+                    return this.transitionTo(RTSPStatus.STATE_INITIAL);
                 },
             })
-            .addTransition(RTSPClientSM.STATE_INITIAL, RTSPClientSM.STATE_OPTIONS)
-            .addTransition(RTSPClientSM.STATE_INITIAL, RTSPClientSM.STATE_TEARDOWN)
-            .addTransition(RTSPClientSM.STATE_OPTIONS, RTSPClientSM.STATE_DESCRIBE)
-            .addTransition(RTSPClientSM.STATE_DESCRIBE, RTSPClientSM.STATE_SETUP)
-            .addTransition(RTSPClientSM.STATE_SETUP, RTSPClientSM.STATE_STREAMS)
-            .addTransition(RTSPClientSM.STATE_TEARDOWN, RTSPClientSM.STATE_INITIAL)
-            // .addTransition(RTSPClientSM.STATE_STREAMS, RTSPClientSM.STATE_PAUSED)
-            // .addTransition(RTSPClientSM.STATE_PAUSED, RTSPClientSM.STATE_STREAMS)
-            .addTransition(RTSPClientSM.STATE_STREAMS, RTSPClientSM.STATE_TEARDOWN)
-            // .addTransition(RTSPClientSM.STATE_PAUSED, RTSPClientSM.STATE_TEARDOWN)
-            .addTransition(RTSPClientSM.STATE_SETUP, RTSPClientSM.STATE_TEARDOWN)
-            .addTransition(RTSPClientSM.STATE_DESCRIBE, RTSPClientSM.STATE_TEARDOWN)
-            .addTransition(RTSPClientSM.STATE_OPTIONS, RTSPClientSM.STATE_TEARDOWN);
+            .addTransition(RTSPStatus.STATE_INITIAL, RTSPStatus.STATE_OPTIONS)
+            .addTransition(RTSPStatus.STATE_INITIAL, RTSPStatus.STATE_TEARDOWN)
+            .addTransition(RTSPStatus.STATE_OPTIONS, RTSPStatus.STATE_DESCRIBE)
+            .addTransition(RTSPStatus.STATE_DESCRIBE, RTSPStatus.STATE_SETUP)
+            .addTransition(RTSPStatus.STATE_SETUP, RTSPStatus.STATE_STREAMS)
+            .addTransition(RTSPStatus.STATE_TEARDOWN, RTSPStatus.STATE_INITIAL)
+            // .addTransition(RTSP_STATUS.STATE_STREAMS, RTSP_STATUS.STATE_PAUSED)
+            // .addTransition(RTSP_STATUS.STATE_PAUSED, RTSP_STATUS.STATE_STREAMS)
+            .addTransition(RTSPStatus.STATE_STREAMS, RTSPStatus.STATE_TEARDOWN)
+            // .addTransition(RTSP_STATUS.STATE_PAUSED, RTSP_STATUS.STATE_TEARDOWN)
+            .addTransition(RTSPStatus.STATE_SETUP, RTSPStatus.STATE_TEARDOWN)
+            .addTransition(RTSPStatus.STATE_DESCRIBE, RTSPStatus.STATE_TEARDOWN)
+            .addTransition(RTSPStatus.STATE_OPTIONS, RTSPStatus.STATE_TEARDOWN);
 
         this.reset();
 
@@ -233,13 +196,13 @@ export class RTSPClientSM extends StateMachine {
     async onDisconnected() {
         this.reset();
         this.shouldReconnect = true;
-        await this.transitionTo(RTSPClientSM.STATE_TEARDOWN);
-        await this.transitionTo(RTSPClientSM.STATE_INITIAL);
+        await this.transitionTo(RTSPStatus.STATE_TEARDOWN);
+        await this.transitionTo(RTSPStatus.STATE_INITIAL);
     }
 
     start() {
-        if (this.currentState.name !== RTSPClientSM.STATE_STREAMS) {
-            return this.transitionTo(RTSPClientSM.STATE_OPTIONS);
+        if (this.currentState.name !== RTSPStatus.STATE_STREAMS) {
+            return this.transitionTo(RTSPStatus.STATE_OPTIONS);
         } else {
             // TODO: seekable
             let promises = [];
@@ -290,12 +253,12 @@ export class RTSPClientSM extends StateMachine {
         this.sessions = {};
         this.contentBase = '';
         if (this.currentState) {
-            if (this.currentState.name != RTSPClientSM.STATE_INITIAL) {
-                await this.transitionTo(RTSPClientSM.STATE_TEARDOWN);
-                await this.transitionTo(RTSPClientSM.STATE_INITIAL);
+            if (this.currentState.name != RTSPStatus.STATE_INITIAL) {
+                await this.transitionTo(RTSPStatus.STATE_TEARDOWN);
+                await this.transitionTo(RTSPStatus.STATE_INITIAL);
             }
         } else {
-            await this.transitionTo(RTSPClientSM.STATE_INITIAL);
+            await this.transitionTo(RTSPStatus.STATE_INITIAL);
         }
         this.sdp = null;
         this.interleaveChannelIndex = 0;
@@ -307,11 +270,11 @@ export class RTSPClientSM extends StateMachine {
     async reconnect() {
         //this.parent.eventSource.dispatchEvent('clear');
         await this.reset();
-        if (this.currentState.name != RTSPClientSM.STATE_INITIAL) {
-            await this.transitionTo(RTSPClientSM.STATE_TEARDOWN);
-            return this.transitionTo(RTSPClientSM.STATE_OPTIONS);
+        if (this.currentState.name != RTSPStatus.STATE_INITIAL) {
+            await this.transitionTo(RTSPStatus.STATE_TEARDOWN);
+            return this.transitionTo(RTSPStatus.STATE_OPTIONS);
         } else {
-            return this.transitionTo(RTSPClientSM.STATE_OPTIONS);
+            return this.transitionTo(RTSPStatus.STATE_OPTIONS);
         }
     }
 
@@ -421,7 +384,7 @@ export class RTSPClientSM extends StateMachine {
 
     onOptions(data) {
         this.methods = data.headers['public'].split(',').map((e) => e.trim());
-        this.transitionTo(RTSPClientSM.STATE_DESCRIBE);
+        this.transitionTo(RTSPStatus.STATE_DESCRIBE);
     }
 
     sendDescribe() {
@@ -455,7 +418,7 @@ export class RTSPClientSM extends StateMachine {
             throw new Error('No tracks in SDP');
         }
 
-        this.transitionTo(RTSPClientSM.STATE_SETUP);
+        this.transitionTo(RTSPStatus.STATE_SETUP);
     }
 
     sendSetup() {
@@ -563,7 +526,7 @@ export class RTSPClientSM extends StateMachine {
     }
 
     onSetup() {
-        this.transitionTo(RTSPClientSM.STATE_STREAMS);
+        this.transitionTo(RTSPStatus.STATE_STREAMS);
     }
 
     onRTP(_data) {

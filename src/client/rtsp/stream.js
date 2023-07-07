@@ -1,8 +1,6 @@
 import { getTagged } from '../../deps/bp_logger.js';
-
-import { RTSPClientSM as RTSPClient } from './client.js';
+import { RTSPError, RTSPStatus } from './status.js';
 import { Url } from '../../core/util/url.js';
-import { RTSPError } from './client';
 
 const LOG_TAG = 'rtsp:stream';
 const Log = getTagged(LOG_TAG);
@@ -119,7 +117,7 @@ export class RTSPStream {
     }
 
     sendSetup(session = null) {
-        this.state = RTSPClient.STATE_SETUP;
+        this.state = RTSPStatus.STATE_SETUP;
         this.rtpChannel = this.client.interleaveChannelIndex;
         let interleavedChannels = this.client.interleaveChannelIndex++ + '-' + this.client.interleaveChannelIndex++;
         let params = {

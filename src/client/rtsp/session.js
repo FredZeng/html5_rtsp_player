@@ -1,8 +1,6 @@
 import { getTagged } from '../../deps/bp_logger.js';
-
-import { RTSPClientSM as RTSPClient } from './client.js';
+import { RTSPStatus } from './status.js';
 import { Url } from '../../core/util/url.js';
-import { RTSPError } from './client';
 
 const LOG_TAG = 'rtsp:session';
 const Log = getTagged(LOG_TAG);
@@ -48,7 +46,7 @@ export class RTSPSession {
     }
 
     async sendPlay(pos = 0) {
-        this.state = RTSPClient.STATE_PLAY;
+        this.state = RTSPStatus.STATE_PLAY;
         let params = {};
         let range = this.client.sdp.sessionBlock.range;
         if (range) {
@@ -59,7 +57,7 @@ export class RTSPSession {
             // params['Range'] = `${range[2]}=${range[0]}-`;
         }
         let data = await this.sendRequest('PLAY', params);
-        this.state = RTSPClient.STATE_PLAYING;
+        this.state = RTSPStatus.STATE_PLAYING;
         return { data: data };
     }
 
@@ -67,14 +65,14 @@ export class RTSPSession {
         if (!this.client.supports('PAUSE')) {
             return;
         }
-        this.state = RTSPClient.STATE_PAUSE;
+        this.state = RTSPStatus.STATE_PAUSE;
         await this.sendRequest('PAUSE');
-        this.state = RTSPClient.STATE_PAUSED;
+        this.state = RTSPStatus.STATE_PAUSED;
     }
 
     async sendTeardown() {
-        if (this.state != RTSPClient.STATE_TEARDOWN) {
-            this.state = RTSPClient.STATE_TEARDOWN;
+        if (this.state != RTSPStatus.STATE_TEARDOWN) {
+            this.state = RTSPStatus.STATE_TEARDOWN;
             await this.sendRequest('TEARDOWN');
             Log.log('RTSPClient: STATE_TEARDOWN');
             ///this.client.connection.disconnect();
