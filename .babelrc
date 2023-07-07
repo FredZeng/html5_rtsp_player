@@ -1,3 +1,13 @@
 {
-  "presets": ["es2015-rollup"]
-}
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "bugfixes": true,
+          "loose": true,
+          "modules": false
+        }
+      ],
+      "@babel/preset-typescript"
+    ]
+  }
